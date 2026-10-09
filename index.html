@@ -139,7 +139,19 @@
     });
 </script>
 <script>
-window.addEventListener('error', e => { document.title = 'BOOTFEHLER: ' + e.message + ' (' + (e.filename || '?').split('/').pop() + ':' + e.lineno + ')'; });
+window.addEventListener('error', e => {
+  document.title = 'BOOTFEHLER: ' + e.message + ' (' + (e.filename || '?').split('/').pop() + ':' + e.lineno + ')';
+  if (/WebGL/i.test(e.message)) {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0d1526;z-index:99';
+    d.innerHTML = '<div style="color:#ffd35c;font-family:sans-serif;text-align:center;padding:2rem;max-width:520px">'
+      + '<h2 style="margin:0 0 .6em">Kein WebGL</h2>'
+      + '<p style="color:#cdd7ee;line-height:1.6">Dein Browser hat gerade keinen 3D-Grafikkontext mehr.</p>'
+      + '<p style="color:#cdd7ee">Chrome komplett beenden (cmd + Q) und neu &ouml;ffnen, dann l&auml;uft alles.</p>'
+      + '</div>';
+    document.body.appendChild(d);
+  }
+});
 window.addEventListener('unhandledrejection', e => { document.title = 'REJECTION: ' + String(e.reason).slice(0, 200); });
 </script>
 <script type="importmap">
