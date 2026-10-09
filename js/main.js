@@ -4,9 +4,9 @@
 //  Interpolation, Lakitu-Kamera, Gamepad + Maus + Tastatur.
 // ============================================================
 import * as THREE from 'three';
-import { MarioState, marioStep, ACT, ACT_NAME, s16Wrap, atan2s, sins, coss, CONSTANTS_DOC, SURFACE } from './physics.js';
-import { world, group, COINS, STAR } from './level.js';
-import { buildMario, animateMario } from './mario-model.js';
+import { MarioState, marioStep, ACT, ACT_NAME, s16Wrap, atan2s, sins, coss, CONSTANTS_DOC, SURFACE } from './physics.js?v=21';
+import { world, group, COINS, STAR } from './level.js?v=21';
+import { buildMario, animateMario } from './mario-model.js?v=21';
 
 // ---------- Szene ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });

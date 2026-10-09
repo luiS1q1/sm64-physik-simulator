@@ -3,7 +3,7 @@
 //  Proportionen nach dem SM64-Vorbild), Animationen nach Aktion.
 // ============================================================
 import * as THREE from 'three';
-import { ACT, ACT_NAME, sins, coss, s16Wrap } from './physics.js';
+import { ACT, ACT_NAME, sins, coss, s16Wrap } from './physics.js?v=21';
 
 const RED = 0xd02818, BLUE = 0x2038ec, SKIN = 0xf0a868, BROWN = 0x6a3410,
       WHITE = 0xf8f8f8, DARK = 0x402008, YELLOW = 0xf0c000;

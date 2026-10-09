@@ -5,7 +5,7 @@
 //  oben (Boeden) bzw. nach aussen (Waende) zeigen.
 // ============================================================
 import * as THREE from 'three';
-import { CollisionWorld, SURFACE } from './physics.js';
+import { CollisionWorld, SURFACE } from './physics.js?v=21';
 
 const world = new CollisionWorld();
 const group = new THREE.Group();
