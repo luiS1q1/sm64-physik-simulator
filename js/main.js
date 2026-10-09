@@ -178,20 +178,72 @@ function updateCamera(dt, pad, smooth) {
     return camYaw;
 }
 
-// ---------- Sound (winzige WebAudio-Bliips) ----------
+// ---------- Sound (WebAudio-Synthese, keine Originaldateien) ----------
 let audioCtx = null;
-function beep(freq, dur = 0.08, type = 'square', gain = 0.03) {
+function ac() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+function tone(freq, dur, { type = 'square', gain = 0.05, slide = null, delay = 0 } = {}) {
     try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = type; o.frequency.value = freq;
-        g.gain.value = gain;
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start();
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-        o.stop(audioCtx.currentTime + dur);
+        const c = ac(), t0 = c.currentTime + delay;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, t0);
+        if (slide !== null) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+        g.gain.setValueAtTime(gain, t0);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        o.connect(g); g.connect(c.destination);
+        o.start(t0); o.stop(t0 + dur + 0.02);
     } catch (e) { /* Audio nicht verfuegbar */ }
 }
+function noise(dur, { gain = 0.1, freq = 800, delay = 0 } = {}) {
+    try {
+        const c = ac(), t0 = c.currentTime + delay;
+        const len = Math.max(1, Math.floor(c.sampleRate * dur));
+        const buf = c.createBuffer(1, len, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        const s = c.createBufferSource(); s.buffer = buf;
+        const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+        const g = c.createGain(); g.gain.value = gain;
+        s.connect(f); f.connect(g); g.connect(c.destination);
+        s.start(t0);
+    } catch (e) { /* Audio nicht verfuegbar */ }
+}
+const sfx = {
+    jump(a) {
+        if (a === ACT.DOUBLE_JUMP) tone(300, 0.22, { slide: 700 });
+        else if (a === ACT.TRIPLE_JUMP) { tone(260, 0.3, { slide: 900 }); tone(520, 0.3, { type: 'sine', gain: 0.03, slide: 1200, delay: 0.08 }); }
+        else tone(240, 0.18, { slide: 520 });
+    },
+    longJump() { tone(200, 0.25, { slide: 640 }); noise(0.2, { freq: 500, gain: 0.05 }); },
+    backflip() { tone(180, 0.35, { slide: 800 }); },
+    sideFlip() { tone(280, 0.3, { slide: 760 }); },
+    wallKick() { tone(400, 0.12, { slide: 640 }); },
+    dive() { tone(500, 0.25, { type: 'sawtooth', gain: 0.04, slide: 180 }); },
+    groundPound() { noise(0.3, { freq: 300, gain: 0.16 }); tone(90, 0.25, { type: 'sine', gain: 0.1 }); },
+    land() { noise(0.08, { freq: 400, gain: 0.07 }); },
+    step() { noise(0.045, { freq: 900, gain: 0.03 }); },
+    punch() { tone(180, 0.08, { type: 'sawtooth', gain: 0.05, slide: 90 }); },
+    coin() { tone(988, 0.09, { gain: 0.06 }); tone(1319, 0.35, { gain: 0.06, delay: 0.09 }); },
+    star() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { gain: 0.06, delay: i * 0.13 })); },
+    fall() { tone(600, 0.5, { slide: 150 }); },
+};
+function sfxForAction(a) {
+    switch (a) {
+        case ACT.JUMP: case ACT.DOUBLE_JUMP: case ACT.TRIPLE_JUMP: return sfx.jump(a);
+        case ACT.LONG_JUMP: return sfx.longJump();
+        case ACT.BACKFLIP: return sfx.backflip();
+        case ACT.SIDE_FLIP: return sfx.sideFlip();
+        case ACT.WALL_KICK_AIR: return sfx.wallKick();
+        case ACT.DIVE: return sfx.dive();
+        case ACT.GROUND_POUND: return sfx.groundPound();
+        case ACT.PUNCHING: return sfx.punch();
+    }
+}
+const AIR_ACTIONS = [ACT.JUMP, ACT.DOUBLE_JUMP, ACT.TRIPLE_JUMP, ACT.FREEFALL, ACT.LONG_JUMP,
+    ACT.BACKFLIP, ACT.SIDE_FLIP, ACT.WALL_KICK_AIR, ACT.DIVE, ACT.GROUND_POUND];
 
 // ---------- HUD ----------
 const hud = document.getElementById('hud');
