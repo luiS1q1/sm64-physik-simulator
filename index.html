@@ -138,6 +138,10 @@
         if (e.code === 'KeyI') document.getElementById('about').classList.toggle('hidden');
     });
 </script>
+<script>
+window.addEventListener('error', e => { document.title = 'BOOTFEHLER: ' + e.message + ' (' + (e.filename || '?').split('/').pop() + ':' + e.lineno + ')'; });
+window.addEventListener('unhandledrejection', e => { document.title = 'REJECTION: ' + String(e.reason).slice(0, 200); });
+</script>
 <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
 </script>
