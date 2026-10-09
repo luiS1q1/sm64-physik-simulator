@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SM64-Physik-Simulator</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #64b4e6; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; }
+    canvas { display: block; }
+
+    #hud {
+        position: fixed; top: 16px; left: 16px; z-index: 10;
+        background: rgba(10, 20, 40, 0.72); color: #fff;
+        border: 2px solid rgba(255,255,255,0.25); border-radius: 12px;
+        padding: 12px 16px; font-size: 14px; line-height: 1.55;
+        transition: opacity 0.2s; min-width: 240px;
+    }
+    #hud .row { display: flex; justify-content: space-between; gap: 16px; }
+    #hud .row b { font-weight: 600; color: #ffd84d; }
+    #hud-action { font-size: 17px; font-weight: 700; color: #7ce0ff; }
+    #hud-dev {
+        position: fixed; bottom: 16px; left: 16px; z-index: 10;
+        background: rgba(0,0,0,0.75); color: #9f9; font-family: Consolas, monospace;
+        font-size: 12px; padding: 6px 10px; border-radius: 8px;
+        opacity: 0; transition: opacity 0.2s; max-width: 90vw;
+    }
+    #win {
+        position: fixed; inset: 0; z-index: 30; display: none;
+        align-items: center; justify-content: center; flex-direction: column;
+        background: rgba(10, 10, 30, 0.55); color: #fff;
+    }
+    #win h2 { font-size: 42px; color: #ffd84d; text-shadow: 0 3px 0 #a06000; }
+    #win p { margin-top: 10px; font-size: 18px; }
+
+    #about {
+        position: fixed; inset: 0; z-index: 40; display: flex;
+        align-items: center; justify-content: center; background: rgba(5,10,25,0.6);
+    }
+    #about.hidden { display: none; }
+    #about-card {
+        background: #10203c; color: #dfe8f8; border: 2px solid #3a5a8a;
+        border-radius: 16px; max-width: 760px; width: 92vw; max-height: 86vh;
+        overflow: auto; padding: 28px 32px; font-size: 14.5px; line-height: 1.6;
+    }
+    #about-card h1 { font-size: 26px; color: #ffd84d; margin-bottom: 4px; }
+    #about-card h2 { font-size: 17px; color: #7ce0ff; margin: 18px 0 8px; }
+    #about-card table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+    #about-card td { padding: 4px 8px; border-bottom: 1px solid #2a3a5a; vertical-align: top; }
+    #about-card td:first-child { color: #ffd84d; white-space: nowrap; }
+    #about-card a { color: #7ce0ff; }
+    #about-card .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; font-size: 14px; }
+    #about-card kbd {
+        background: #2a3a5a; border: 1px solid #4a6a9a; border-bottom-width: 3px;
+        border-radius: 6px; padding: 1px 7px; font-family: Consolas, monospace; font-size: 12.5px;
+    }
+    #about-card .icon-row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; color: #8aa4c8; }
+    #close-about {
+        margin-top: 18px; background: #ffd84d; color: #10203c; font-weight: 700;
+        border: none; border-radius: 8px; padding: 9px 22px; font-size: 15px; cursor: pointer;
+    }
+    #help-hint {
+        position: fixed; bottom: 16px; right: 16px; z-index: 10;
+        background: rgba(10,20,40,0.72); color: #cfe0ff; font-size: 13px;
+        padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+    }
+    #help-hint kbd { background: #2a3a5a; border-radius: 4px; padding: 0 6px; font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<div id="hud">
+    <div id="hud-action">Idle</div>
+    <div class="row"><span>forwardVel</span><b id="hud-speed">0.00</b></div>
+    <div class="row"><span>vel Y</span><b id="hud-vel">0.00</b></div>
+    <div class="row"><span>Position</span><b id="hud-pos">0 / 0 / 0</b></div>
+    <div class="row"><span>Stick</span><b id="hud-stick">0</b></div>
+    <div class="row"><span>Muenzen</span><b id="hud-coins">0</b></div>
+</div>
+<div id="hud-dev"></div>
+<div id="help-hint"><kbd>H</kbd> HUD &nbsp; <kbd>G</kbd> Debug &nbsp; <kbd>R</kbd> Respawn &nbsp; <kbd>I</kbd> Info</div>
+
+<div id="win"><h2>Stern geholt!</h2><p>Alle Spruenge der Sprungkette hast du drauf.</p></div>
+
+<div id="about">
+    <div id="about-card">
+        <h1>SM64-Physik-Simulator</h1>
+        <p>Mario 64 Bewegungsphysik, 1:1 nachgebaut. Logik-Tick 30 Hz, 4 Viertelschritte pro Tick,
+        s16-Winkelsystem, exakt die Konstanten aus dem
+        <a href="https://github.com/n64decomp/sm64" target="_blank" rel="noopener">SM64-Decomp-Projekt</a>.</p>
+
+        <h2>Steuerung</h2>
+        <div class="keys">
+            <span><kbd>W A S D</kbd> / linken Stick: laufen</span>
+            <span><kbd>Leertaste</kbd> / <kbd>A</kbd>-Knopf: springen</span>
+            <span><kbd>F</kbd> / <kbd>X</kbd>-Knopf: schlagen / Hechtsprung</span>
+            <span><kbd>C</kbd> / <kbd>RB</kbd>: ducken / Langsprung (Z+A)</span>
+            <span>Maus ziehen / rechten Stick: Kamera</span>
+            <span>Mausrad: Zoom (3 Stufen wie C-down)</span>
+            <span><kbd>R</kbd>: zurueck zum Start</span>
+            <span><kbd>G</kbd>: Debug-Werte, <kbd>H</kbd>: HUD</span>
+        </div>
+        <p style="margin-top:10px; color:#8aa4c8;">Sprungkette: Landen + A innerhalb von 5 Ticks =
+        Doppelsprung, nach dem Doppelsprung mit mehr als 20 Speed der Dreifachsprung.
+        Ducken + A im Stehen: Rueckwaertssalto, ducken + A in Bewegung: Langsprung.</p>
+
+        <h2>Die Original-Konstanten</h2>
+        <table id="const-table"></table>
+
+        <h2>Quellen &amp; Credits</h2>
+        <div class="icon-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            Physik: <a href="https://github.com/n64decomp/sm64" target="_blank" rel="noopener">n64decomp/sm64</a> (Decomp, MIT)
+        </div>
+        <div class="icon-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 37a5 5 0 0 0 10 0v-8a13 13 0 0 0-26 0v8a5 5 0 0 0 10 0"/></svg>
+            3D-Rendering: <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT)
+        </div>
+        <p style="color:#8aa4c8; margin-top:8px;">Fanprojekt zum Lernen. Kein offizielles Nintendo-Produkt; Mario, Super Mario 64 sind Marken von Nintendo.</p>
+        <button id="close-about">Los geht's</button>
+    </div>
+</div>
+
+<script>
+    // Konstanten-Tabelle fuellen
+    import('./js/physics.js').then(({ CONSTANTS_DOC }) => {
+        const table = document.getElementById('const-table');
+        for (const [k, v] of CONSTANTS_DOC) {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td'); td1.textContent = k;
+            const td2 = document.createElement('td'); td2.textContent = v;
+            tr.append(td1, td2); table.append(tr);
+        }
+    });
+    document.getElementById('close-about').onclick = () =>
+        document.getElementById('about').classList.add('hidden');
+    addEventListener('keydown', e => {
+        if (e.code === 'KeyI') document.getElementById('about').classList.toggle('hidden');
+    });
+</script>
+<script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
