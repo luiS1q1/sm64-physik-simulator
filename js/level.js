@@ -10,15 +10,63 @@ import { CollisionWorld, SURFACE } from './physics.js';
 const world = new CollisionWorld();
 const group = new THREE.Group();
 
+// ---- Texturen: kleine 64px-Kacheln, Kachelgroesse 200 Einheiten ----
+function canvasTex(draw) {
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 64;
+    draw(cv.getContext('2d'));
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = THREE.NearestFilter;
+    return tex;
+}
+const T = {
+    grass: canvasTex((c) => {
+        c.fillStyle = '#3f8a36'; c.fillRect(0, 0, 64, 64);
+        c.fillStyle = '#4c9d40';
+        for (let i = 0; i < 64; i += 8) for (let j = 0; j < 64; j += 16)
+            c.fillRect(i + ((j >> 4) % 2) * 8, j, 8, 8);
+    }),
+    dirt: canvasTex((c) => {
+        c.fillStyle = '#a1794a'; c.fillRect(0, 0, 64, 64);
+        c.fillStyle = '#946a3e';
+        for (let i = 0; i < 40; i++) c.fillRect((i * 17) % 60, (i * 29) % 60, 4 + (i % 3) * 3, 3);
+    }),
+    stone: canvasTex((c) => {
+        c.fillStyle = '#8f8f83'; c.fillRect(0, 0, 64, 64);
+        c.strokeStyle = '#6f6f66'; c.lineWidth = 3;
+        for (let y = 0; y <= 64; y += 16) { c.beginPath(); c.moveTo(0, y); c.lineTo(64, y); c.stroke(); }
+        for (let y = 0; y < 64; y += 16) { const off = ((y >> 4) % 2) * 16; for (let x = off; x <= 64; x += 32) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 16); c.stroke(); } }
+    }),
+    wood: canvasTex((c) => {
+        c.fillStyle = '#8a5a2a'; c.fillRect(0, 0, 64, 64);
+        c.fillStyle = '#7a4c20';
+        for (let x = 0; x < 64; x += 16) c.fillRect(x, 0, 2, 64);
+    }),
+    ice: canvasTex((c) => {
+        c.fillStyle = '#aee2ff'; c.fillRect(0, 0, 64, 64);
+        c.fillStyle = '#c4ecff';
+        for (let i = 0; i < 6; i++) c.fillRect(0, i * 12 + 2, 64, 3);
+    }),
+    mud: canvasTex((c) => {
+        c.fillStyle = '#6a5233'; c.fillRect(0, 0, 64, 64);
+        c.fillStyle = '#5c4629';
+        for (let i = 0; i < 20; i++) c.fillRect((i * 13) % 58, (i * 23) % 58, 6, 4);
+    }),
+    check: canvasTex((c) => {
+        for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++)
+            { c.fillStyle = (i + j) % 2 ? '#d8d8c8' : '#efece0'; c.fillRect(i * 32, j * 32, 32, 32); }
+    }),
+};
 const MAT = {
-    grass: new THREE.MeshLambertMaterial({ color: 0x58b849 }),
-    dirt:  new THREE.MeshLambertMaterial({ color: 0xb08850 }),
-    stone: new THREE.MeshLambertMaterial({ color: 0x9a9a8e }),
+    grass: new THREE.MeshLambertMaterial({ map: T.grass }),
+    dirt:  new THREE.MeshLambertMaterial({ map: T.dirt }),
+    stone: new THREE.MeshLambertMaterial({ map: T.stone }),
     brick: new THREE.MeshLambertMaterial({ color: 0xc46a4a }),
-    wood:  new THREE.MeshLambertMaterial({ color: 0x8a5a2a }),
-    ice:   new THREE.MeshLambertMaterial({ color: 0xaee2ff }),
-    mud:   new THREE.MeshLambertMaterial({ color: 0x6a5233 }),
-    check: new THREE.MeshLambertMaterial({ color: 0xd8d8c8 }),
+    wood:  new THREE.MeshLambertMaterial({ map: T.wood }),
+    ice:   new THREE.MeshLambertMaterial({ map: T.ice, transparent: true, opacity: 0.92 }),
+    mud:   new THREE.MeshLambertMaterial({ map: T.mud }),
+    check: new THREE.MeshLambertMaterial({ map: T.check }),
 };
 
 function tri(p1, p2, p3, mat, type) {

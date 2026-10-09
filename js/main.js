@@ -43,6 +43,18 @@ for (let i = 0; i < 14; i++) {
 const mario = buildMario();
 scene.add(mario.root);
 
+// Schatten
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -2600; sun.shadow.camera.right = 2600;
+sun.shadow.camera.top = 2600; sun.shadow.camera.bottom = -2600;
+sun.shadow.camera.far = 9000;
+sun.shadow.bias = -0.0005;
+group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+mario.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
 const m = new MarioState();
 const SPAWN = [0, 50, 1500];
 function respawn() {
@@ -212,6 +224,18 @@ let last = performance.now(), acc = 0, gameTicks = 0;
 let lastPad = null;
 
 function logicTick(pad) {
+    // Tastatur -> Stick (WASD); ohne Eingabe nullen, wenn kein Gamepad da ist
+    if (keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD) {
+        const sx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+        const sy = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0);
+        const len = Math.hypot(sx, sy);
+        m.stickX = Math.round(sx / len * 64);
+        m.stickY = Math.round(sy / len * 64);
+        m.stickMagRaw = 64;
+    } else if (!pad) {
+        m.stickX = 0; m.stickY = 0; m.stickMagRaw = 0;
+    }
+
     // Buttons von Gamepad/Tastatur
     const aDown = !!(pad ? pad.a : keys.Space);
     const bDown = !!(pad ? pad.b : keys.KeyF);
@@ -221,11 +245,19 @@ function logicTick(pad) {
     m.zPressed = zDown && !m.zDown;
     m.aDown = aDown; m.bDown = bDown; m.zDown = zDown;
 
+    const before = m.action;
+    const wasAir = AIR_ACTIONS.includes(m.action);
     marioStep(m, world, currentCamYaw);
+    if (m.action !== before) sfxForAction(m.action);
+    else if (wasAir && !AIR_ACTIONS.includes(m.action)) sfx.land();
+    else if (m.action === ACT.WALKING && m.forwardVel > 4) {
+        m.stepDist = (m.stepDist || 0) + m.forwardVel;
+        if (m.stepDist > 90) { m.stepDist = 0; sfx.step(); }
+    }
     gameTicks++;
 
     // Absturz in die Leere -> Respawn
-    if (m.pos[1] < -1500) { respawn(); beep(220, 0.3, 'sawtooth'); }
+    if (m.pos[1] < -1500) { respawn(); sfx.fall(); }
 }
 
 let currentCamYaw = 0;
@@ -253,12 +285,9 @@ function frame(now) {
     const rx = m.prevPos[0] + (m.pos[0] - m.prevPos[0]) * alpha;
     const ry = m.prevPos[1] + (m.pos[1] - m.prevPos[1]) * alpha;
     const rz = m.prevPos[2] + (m.pos[2] - m.prevPos[2]) * alpha;
-    m.pos[0] = rx; m.pos[1] = ry; m.pos[2] = rz; // visuelles Interpolieren (Logik unberuehrt)
-    // Logik-Position restaurieren: Interpolation nur fuer Anzeige
-    // (Logik nutzt m.pos, daher: echte Werte merken und zuruecksetzen)
-    // Hinweis: Logik-Ticks schreiben m.pos neu; Renderframe-aenderung gilt nur 1 Frame
 
     animateMario(mario, m, dt / 1000, now / 1000);
+    mario.root.position.set(rx, ry, rz);
 
     // Muenzen drehen + einsammeln
     for (const c of COINS) {
@@ -269,8 +298,7 @@ function frame(now) {
         if (dx * dx + dy * dy + dz * dz < 90 * 90) {
             c.taken = true; m.coinCount++;
             mesh.visible = false;
-            beep(880, 0.1); beep(1320, 0.15);
-            setTimeout(() => beep(1760, 0.2), 90);
+            sfx.coin();
         }
     }
     starMesh.rotation.y = now / 500;
@@ -278,8 +306,7 @@ function frame(now) {
         const dx = rx - STAR.x, dy = ry + 80 - STAR.y, dz = rz - STAR.z;
         if (dx * dx + dy * dy + dz * dz < 110 * 110) {
             STAR.taken = true; starMesh.visible = false;
-            beep(523, 0.15); setTimeout(() => beep(659, 0.15), 150);
-            setTimeout(() => beep(784, 0.15), 300); setTimeout(() => beep(1046, 0.4), 450);
+            sfx.star();
             showWin();
         }
     }

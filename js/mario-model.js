@@ -75,7 +75,6 @@ export function buildMario() {
 // ---------- Animation pro Aktion ----------
 export function animateMario(mario, m, dt, time) {
     const { root, parts } = mario;
-    root.position.set(m.pos[0], m.pos[1], m.pos[2]);
     parts.body.rotation.y = s16Wrap(m.faceAngle[1]) * Math.PI / 32768;
 
     const moving = Math.hypot(m.vel[0], m.vel[2]) > 1;
@@ -98,6 +97,7 @@ export function animateMario(mario, m, dt, time) {
                 parts.armL.rotation.x = -swing * 0.7;
                 parts.armR.rotation.x = swing * 0.7;
                 parts.body.rotation.x = 0.12 + m.forwardVel / 48 * 0.12; // Lauf-Lean
+                parts.body.position.y = Math.abs(Math.sin(walkPhase)) * 5; // Lauf-Bob
             }
             break;
         case ACT.JUMP: case ACT.DOUBLE_JUMP: case ACT.TRIPLE_JUMP: case ACT.WALL_KICK_AIR:
